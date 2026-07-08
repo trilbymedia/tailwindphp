@@ -10,6 +10,10 @@ use function TailwindPHP\Ast\rule;
 
 use const TailwindPHP\PropertyOrder\PROPERTY_ORDER;
 
+use function TailwindPHP\substituteFunctionsInValue;
+
+use TailwindPHP\ThemeResolutionException;
+
 use function TailwindPHP\Utils\compare;
 use function TailwindPHP\Utils\escape;
 use function TailwindPHP\Walk\walk;
@@ -361,6 +365,12 @@ function compileBaseUtility(array $candidate, object $designSystem): array
     if ($candidate['kind'] === 'arbitrary') {
         $value = $candidate['value'];
 
+        try {
+            $value = substituteFunctionsInValue($value, ['kind' => 'declaration', 'property' => $candidate['property']], $designSystem);
+        } catch (ThemeResolutionException) {
+            return [];
+        }
+
         // Handle opacity modifier for arbitrary properties
         if ($candidate['modifier']) {
             $value = asColor($value, $candidate['modifier'], $designSystem->getTheme());
@@ -371,6 +381,23 @@ function compileBaseUtility(array $candidate, object $designSystem): array
         }
 
         return [[decl($candidate['property'], $value)]];
+    }
+
+    if (
+        $candidate['kind'] === 'functional' &&
+        isset($candidate['value']['kind'], $candidate['value']['value']) &&
+        $candidate['value']['kind'] === 'arbitrary' &&
+        str_contains($candidate['value']['value'], 'theme(')
+    ) {
+        try {
+            $candidate['value']['value'] = substituteFunctionsInValue(
+                $candidate['value']['value'],
+                ['kind' => 'declaration', 'property' => $candidate['root']],
+                $designSystem,
+            );
+        } catch (ThemeResolutionException) {
+            return [];
+        }
     }
 
     $utilities = $designSystem->getUtilities()->get($candidate['root']) ?? [];
