@@ -606,6 +606,14 @@ function handleSpacing(array $node, object $designSystem): ?string
         return null;
     }
 
+    if (preg_match('/^0(?:[a-z%]+)?$/i', $argsStr)) {
+        return '0';
+    }
+
+    if (preg_match('/^1(?:[a-z%]+)?$/i', $argsStr)) {
+        return $multiplier;
+    }
+
     return "calc({$multiplier} * {$argsStr})";
 }
 
@@ -782,7 +790,7 @@ function resolveNestedThemeCallsForInitial(string $value, object $designSystem, 
 
         // Apply prefix for output
         $prefixedPath = $path;
-        if ($prefix !== null && str_starts_with($path, '--')) {
+        if ($prefix !== null) {
             $prefixedPath = '--' . $prefix . '-' . substr($path, 2);
         }
 

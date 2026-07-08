@@ -2255,7 +2255,7 @@ function resolveThemeCallsInValue(string $value, Theme $theme): string
         // Try to get the value from the theme
         $prefix = $theme->getPrefix();
         $prefixedPath = $path;
-        if ($prefix !== null && str_starts_with($path, '--')) {
+        if ($prefix !== null) {
             $prefixedPath = '--' . $prefix . '-' . substr($path, 2);
         }
 
@@ -2319,6 +2319,11 @@ function applyColorMixPolyfill(array $ast, DesignSystem $designSystem): array
                         $needsPolyfill = true;
                         $fallbackColor = trim($match[1]);
                         $fallbackColor = LightningCss::optimizeValue($fallbackColor, $decl['property']);
+                    }
+                    // Pattern: color-mix(in oklab, currentcolor OPACITY%, transparent)
+                    elseif (preg_match('/color-mix\s*\(\s*in\s+oklab\s*,\s*currentcolor\s+\d+(?:\.\d+)?%?\s*,\s*transparent\s*\)/i', $value)) {
+                        $needsPolyfill = true;
+                        $fallbackColor = 'currentColor';
                     }
                     // Pattern: color-mix(in oklab, var(--var) OPACITY%, transparent)
                     elseif (preg_match(REGEX_COLOR_MIX_OPACITY, $value, $match)) {
