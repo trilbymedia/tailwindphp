@@ -29,6 +29,16 @@ use function TailwindPHP\Utils\isValidSpacingMultiplier;
 function registerMaskUtilities(UtilityBuilder $builder): void
 {
     $theme = $builder->getTheme();
+    $normalizeAngle = function (string $value): string {
+        if (!preg_match('/^(-?(?:\d+|\d*\.\d+))rad$/', $value, $matches)) {
+            return $value;
+        }
+
+        $degrees = (float) $matches[1] * 180 / M_PI;
+        $formatted = rtrim(rtrim(number_format($degrees, 3, '.', ''), '0'), '.');
+
+        return ($formatted === '-0' ? '0' : $formatted) . 'deg';
+    };
 
     // ==================================================
     // Mask Image (base utilities)
@@ -270,16 +280,26 @@ function registerMaskUtilities(UtilityBuilder $builder): void
                 return null;
             }
 
-            return "calc(1deg * {$value['value']})";
+            if ($value['value'] === '0') {
+                return '0deg';
+            }
+
+            return $value['value'] === '1' ? '1deg' : "calc(1deg * {$value['value']})";
         },
         'handleNegativeBareValue' => function ($value) {
             if (!isPositiveInteger($value['value'])) {
                 return null;
             }
 
-            return "calc(1deg * -{$value['value']})";
+            if ($value['value'] === '0') {
+                return '0deg';
+            }
+
+            return $value['value'] === '1' ? '-1deg' : "calc(1deg * -{$value['value']})";
         },
-        'handle' => function ($value) use ($maskPropertiesGradient, $maskPropertiesLinear) {
+        'handle' => function ($value) use ($maskPropertiesGradient, $maskPropertiesLinear, $normalizeAngle) {
+            $value = $normalizeAngle($value);
+
             return [
                 $maskPropertiesGradient(),
                 $maskPropertiesLinear(),
@@ -469,16 +489,26 @@ function registerMaskUtilities(UtilityBuilder $builder): void
                 return null;
             }
 
-            return "calc(1deg * {$value['value']})";
+            if ($value['value'] === '0') {
+                return '0deg';
+            }
+
+            return $value['value'] === '1' ? '1deg' : "calc(1deg * {$value['value']})";
         },
         'handleNegativeBareValue' => function ($value) {
             if (!isPositiveInteger($value['value'])) {
                 return null;
             }
 
-            return "calc(1deg * -{$value['value']})";
+            if ($value['value'] === '0') {
+                return '0deg';
+            }
+
+            return $value['value'] === '1' ? '-1deg' : "calc(1deg * -{$value['value']})";
         },
-        'handle' => function ($value) use ($maskPropertiesGradient, $maskPropertiesConic) {
+        'handle' => function ($value) use ($maskPropertiesGradient, $maskPropertiesConic, $normalizeAngle) {
+            $value = $normalizeAngle($value);
+
             return [
                 $maskPropertiesGradient(),
                 $maskPropertiesConic(),

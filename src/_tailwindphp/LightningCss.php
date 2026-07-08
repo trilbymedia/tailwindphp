@@ -917,10 +917,15 @@ class LightningCss
         $result = [];
 
         foreach ($prefixes as $prefixedProp) {
+            $value = $decl['value'] ?? '';
+            if ($prefixedProp === '-webkit-mask-composite' && $value === 'intersect') {
+                $value = 'source-in';
+            }
+
             $result[] = [
                 'kind' => 'declaration',
                 'property' => $prefixedProp,
-                'value' => $decl['value'] ?? '',
+                'value' => $value,
                 'important' => $decl['important'] ?? false,
             ];
         }
