@@ -167,17 +167,18 @@ class Application
         }
 
         // Compile
+        $inputBase = $inputFile !== '' && $inputFile !== '-' ? dirname(realpath($inputFile)) : getcwd();
         $compiled = \TailwindPHP\compile($css, [
-            'base' => $inputFile !== '' && $inputFile !== '-' ? dirname(realpath($inputFile)) : getcwd(),
+            'base' => $inputBase,
+            'importSearchPaths' => [$inputBase],
         ]);
 
         // Get sources for content scanning
         $sources = $compiled['sources'] ?? [];
 
-        // If no sources from @source directive, scan current directory
-        if (empty($sources)) {
-            $sources = [['base' => getcwd(), 'pattern' => '**/*', 'negated' => false]];
-        }
+        // Tailwind v4 auto-detects sources from the project root. @source directives add
+        // more paths; they do not replace auto-detection unless source(none) is used.
+        array_unshift($sources, ['base' => getcwd(), 'pattern' => '**/*', 'negated' => false]);
 
         // Scan for candidates
         $candidates = $this->scanSources($sources);
@@ -293,8 +294,10 @@ class Application
                     }
 
                     // Recompile
+                    $inputBase = $inputFile !== '' && $inputFile !== '-' ? dirname(realpath($inputFile)) : getcwd();
                     $compiled = \TailwindPHP\compile($css, [
-                        'base' => $inputFile !== '' && $inputFile !== '-' ? dirname(realpath($inputFile)) : getcwd(),
+                        'base' => $inputBase,
+                        'importSearchPaths' => [$inputBase],
                     ]);
 
                     // Update sources
@@ -340,28 +343,21 @@ class Application
     private function scanSources(array $sources): array
     {
         $candidates = [];
-        $extensions = ['php', 'html', 'htm', 'twig', 'blade.php', 'vue', 'jsx', 'tsx', 'svelte', 'astro', 'mdx'];
+        $extensions = ['php', 'html', 'htm', 'twig', 'blade.php', 'yaml', 'yml', 'md', 'vue', 'jsx', 'tsx', 'svelte', 'astro', 'mdx'];
+        $files = $this->resolveSourceFiles($sources, $extensions);
 
-        foreach ($sources as $source) {
-            if ($source['negated']) {
-                continue;
-            }
-
-            $base = $source['base'] ?: getcwd();
-            $pattern = $source['pattern'];
-
-            $files = $this->globRecursive($base, $pattern, $extensions);
-
-            foreach ($files as $file) {
-                $content = file_get_contents($file);
-                if ($content !== false) {
-                    $extracted = Tailwind::extractCandidates($content);
-                    $candidates = array_merge($candidates, $extracted);
-                }
+        foreach ($files as $file) {
+            $content = file_get_contents($file);
+            if ($content !== false) {
+                $candidates = array_merge(
+                    $candidates,
+                    Tailwind::extractCandidates($content),
+                    Tailwind::extractCandidatesFromStrings($content),
+                );
             }
         }
 
-        return array_unique($candidates);
+        return array_values(array_unique($candidates));
     }
 
     /**
@@ -372,21 +368,44 @@ class Application
      */
     private function getWatchFiles(array $sources): array
     {
-        $files = [];
-        $extensions = ['php', 'html', 'htm', 'twig', 'blade.php', 'vue', 'jsx', 'tsx', 'svelte', 'astro', 'mdx', 'css'];
+        $extensions = ['php', 'html', 'htm', 'twig', 'blade.php', 'yaml', 'yml', 'md', 'vue', 'jsx', 'tsx', 'svelte', 'astro', 'mdx', 'css'];
+
+        return $this->resolveSourceFiles($sources, $extensions);
+    }
+
+    /**
+     * Resolve source directives into concrete files and apply negated patterns.
+     *
+     * @param array<array{base: string, pattern: string, negated: bool}> $sources
+     * @param array<string> $extensions
+     * @return array<string>
+     */
+    private function resolveSourceFiles(array $sources, array $extensions): array
+    {
+        $included = [];
+        $excluded = [];
 
         foreach ($sources as $source) {
-            if ($source['negated']) {
-                continue;
-            }
-
             $base = $source['base'] ?: getcwd();
             $pattern = $source['pattern'];
+            $files = $this->globRecursive($base, $pattern, $extensions);
 
-            $files = array_merge($files, $this->globRecursive($base, $pattern, $extensions));
+            foreach ($files as $file) {
+                if ($source['negated']) {
+                    $excluded[$file] = true;
+                } else {
+                    $included[$file] = $file;
+                }
+            }
         }
 
-        return array_unique($files);
+        foreach ($excluded as $file => $_) {
+            unset($included[$file]);
+        }
+
+        sort($included);
+
+        return array_values($included);
     }
 
     /**
@@ -399,12 +418,58 @@ class Application
     {
         $files = [];
 
+        $baseReal = realpath($base) ?: $base;
+        $baseReal = rtrim(str_replace('\\', '/', $baseReal), '/');
+        $pattern = trim(str_replace('\\', '/', $pattern));
+        $pattern = preg_replace('#^\./#', '', $pattern) ?? $pattern;
+
+        if (str_starts_with($pattern, '/')) {
+            if (is_file($pattern)) {
+                $filename = basename($pattern);
+                $ext = pathinfo($pattern, PATHINFO_EXTENSION);
+
+                return $this->hasAllowedExtension($filename, $ext, $extensions) ? [$pattern] : [];
+            }
+
+            if (is_dir($pattern)) {
+                $base = $pattern;
+                $baseReal = realpath($base) ?: $base;
+                $baseReal = rtrim(str_replace('\\', '/', $baseReal), '/');
+                $pattern = '**/*';
+            } else {
+                $matches = glob($pattern) ?: [];
+
+                return array_values(array_filter($matches, function (string $file) use ($extensions): bool {
+                    return is_file($file) && $this->hasAllowedExtension(basename($file), pathinfo($file, PATHINFO_EXTENSION), $extensions);
+                }));
+            }
+        }
+
         if (!is_dir($base)) {
             return [];
         }
 
+        $directory = new \RecursiveDirectoryIterator($base, \RecursiveDirectoryIterator::SKIP_DOTS);
+        $filter = new \RecursiveCallbackFilterIterator(
+            $directory,
+            function (\SplFileInfo $current): bool {
+                if (!$current->isDir()) {
+                    return true;
+                }
+
+                return !in_array($current->getFilename(), [
+                    '.git',
+                    '.phpstan',
+                    '.phpunit.cache',
+                    'build',
+                    'node_modules',
+                    'reference',
+                    'vendor',
+                ], true);
+            },
+        );
         $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($base, \RecursiveDirectoryIterator::SKIP_DOTS),
+            $filter,
         );
 
         foreach ($iterator as $file) {
@@ -415,23 +480,58 @@ class Application
             $ext = $file->getExtension();
             $filename = $file->getFilename();
 
-            // Check for compound extensions like .blade.php
-            foreach ($extensions as $allowedExt) {
-                if (str_contains($allowedExt, '.')) {
-                    if (str_ends_with($filename, '.' . $allowedExt)) {
-                        $files[] = $file->getPathname();
+            if (!$this->hasAllowedExtension($filename, $ext, $extensions)) {
+                continue;
+            }
 
-                        continue 2;
-                    }
-                } elseif ($ext === $allowedExt) {
-                    $files[] = $file->getPathname();
+            $path = str_replace('\\', '/', $file->getPathname());
+            $relative = ltrim(substr($path, strlen($baseReal)), '/');
 
-                    continue 2;
-                }
+            if ($this->matchesSourcePattern($relative, $pattern)) {
+                $files[] = $file->getPathname();
             }
         }
 
         return $files;
+    }
+
+    /**
+     * @param array<string> $extensions
+     */
+    private function hasAllowedExtension(string $filename, string $ext, array $extensions): bool
+    {
+        foreach ($extensions as $allowedExt) {
+            if (str_contains($allowedExt, '.')) {
+                if (str_ends_with($filename, '.' . $allowedExt)) {
+                    return true;
+                }
+            } elseif ($ext === $allowedExt) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function matchesSourcePattern(string $relative, string $pattern): bool
+    {
+        if ($pattern === '' || $pattern === '.' || $pattern === '**/*') {
+            return true;
+        }
+
+        $pattern = trim($pattern, '/');
+
+        if (!str_contains($pattern, '*') && !str_contains($pattern, '?') && !str_contains($pattern, '[')) {
+            return $relative === $pattern || str_starts_with($relative, $pattern . '/');
+        }
+
+        $regex = preg_quote($pattern, '#');
+        $regex = str_replace('\*\*/', '(?:.*/)?', $regex);
+        $regex = str_replace('\*\*', '.*', $regex);
+        $regex = str_replace('\*', '[^/]*', $regex);
+        $regex = str_replace('\?', '[^/]', $regex);
+
+        return (bool) preg_match('#^' . $regex . '$#', $relative);
     }
 
     /**
