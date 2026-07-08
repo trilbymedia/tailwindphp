@@ -1999,9 +1999,11 @@ function generate(string|array $input, string $css = '@import "tailwindcss";'): 
     if ($cache !== null) {
         $cacheDir = $cache === true ? sys_get_temp_dir() . '/tailwindphp' : $cache;
 
-        // Create cache directory if it doesn't exist
-        if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0755, true);
+        // Create cache directory if it doesn't exist. Guard the mkdir race so a
+        // concurrent process creating it first does not surface as a failure.
+        if (!is_dir($cacheDir) && !mkdir($cacheDir, 0755, true) && !is_dir($cacheDir)) {
+            // Cannot cache — fall back to an uncached compile rather than fail.
+            return generateWithoutCache($content, $css, $compileOptions, $minify);
         }
 
         // Create hash from inputs (content + css + minify flag)
@@ -2019,13 +2021,22 @@ function generate(string|array $input, string $css = '@import "tailwindcss";'): 
             }
 
             if ($isValid) {
-                return file_get_contents($cachePath);
+                $cached = file_get_contents($cachePath);
+                if ($cached !== false) {
+                    return $cached;
+                }
+                // Unreadable cache entry — fall through and recompile.
             }
         }
 
-        // Cache miss - compile, cache, and return
+        // Cache miss - compile, then write atomically so a concurrent reader
+        // never sees a half-written file. Write to a unique temp file in the
+        // same directory and rename over the target (atomic on the same fs).
         $result = generateWithoutCache($content, $css, $compileOptions, $minify);
-        file_put_contents($cachePath, $result);
+        $tmpPath = $cachePath . '.' . getmypid() . '.' . uniqid('', true) . '.tmp';
+        if (file_put_contents($tmpPath, $result, LOCK_EX) !== false && !@rename($tmpPath, $cachePath)) {
+            @unlink($tmpPath);
+        }
 
         return $result;
     }

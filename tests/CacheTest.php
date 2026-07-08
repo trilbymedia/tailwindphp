@@ -67,6 +67,28 @@ class CacheTest extends TestCase
     }
 
     #[Test]
+    public function it_writes_cache_atomically_without_leaving_temp_files(): void
+    {
+        $html = '<div class="flex p-4 gap-2">Hello</div>';
+
+        $css = Tailwind::generate([
+            'content' => $html,
+            'cache' => $this->testCacheDir,
+        ]);
+
+        // The atomic write renames a temp file into place; none should remain.
+        $this->assertEmpty(
+            glob($this->testCacheDir . '/*.tmp'),
+            'No .tmp files should be left behind after an atomic cache write',
+        );
+
+        // The persisted cache file must contain exactly the returned CSS.
+        $cacheFiles = glob($this->testCacheDir . '/tailwind_*.css');
+        $this->assertCount(1, $cacheFiles);
+        $this->assertSame($css, file_get_contents($cacheFiles[0]));
+    }
+
+    #[Test]
     public function it_caches_to_default_directory_when_cache_is_true(): void
     {
         $html = '<div class="mt-8 text-center">Hello</div>';
