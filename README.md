@@ -16,6 +16,9 @@
   <a href="https://github.com/inline0/tailwindphp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="license"></a>
 </p>
 
+> [!NOTE]
+> **This is the Trilby Media maintained fork** of [inline0/tailwindphp](https://github.com/inline0/tailwindphp) (original author [Dennis Josek](https://github.com/inline0)). It tracks upstream and carries additional fixes we rely on in production. Fixes are offered back upstream as PRs; this fork is the version we ship and support until they land. See [CHANGELOG.md](./CHANGELOG.md) for what differs from upstream.
+
 ---
 
 ## What is TailwindPHP?
@@ -36,8 +39,11 @@ TailwindPHP is a 1:1 port of TailwindCSS 4.x to PHP. It scans your markup for cl
 
 ## Quick Start
 
+This fork is installed from its Git repository (add the VCS source, then require it):
+
 ```bash
-composer require tailwindphp/tailwindphp
+composer config repositories.tailwindphp vcs https://github.com/trilbymedia/tailwindphp
+composer require trilbymedia/tailwindphp:dev-trilby
 ```
 
 ```php

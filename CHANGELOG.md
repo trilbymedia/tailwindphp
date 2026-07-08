@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Trilby Media fork
+
+Fixes maintained in the [Trilby Media fork](https://github.com/trilbymedia/tailwindphp)
+on top of upstream `1.4.2`. Each is offered back to upstream as a PR where noted;
+this section tracks what the fork carries beyond [inline0/tailwindphp](https://github.com/inline0/tailwindphp).
+
+### Added
+
+- **`container` layout utility** ported 1:1 from Tailwind's `utilities.ts` (upstream PR [inline0/tailwindphp#5](https://github.com/inline0/tailwindphp/pull/5)).
+- **CLI source resolution**: relative `@import` siblings now resolve via `importSearchPaths`; `@source` is additive to root auto-detection; glob patterns, absolute file/dir `@source` paths, and negated patterns are honored; `yaml`/`yml`/`md` added to scanned extensions; both candidate extractors run per file; `.git`/`vendor`/`node_modules` and other noise dirs are skipped. Adds `GravSourceTest`.
+- **`theme()` substitution inside arbitrary values** — arbitrary utilities (`[color:theme(--color-primary)]`) and functional utilities carrying an arbitrary `theme()` value now resolve.
+- **`--spacing(0)` / `--spacing(1)` shortcut returns** — emit `0` and the base multiplier instead of a redundant `calc()`.
+- **`color-mix(in oklab, currentcolor N%, transparent)` polyfill fallback**.
+
+### Fixed
+
+- **Nested rules dropped when `@apply` expands to multiple declarations** (upstream PR [inline0/tailwindphp#4](https://github.com/inline0/tailwindphp/pull/4)).
+- **Mask angle units** — linear/conic angles in `rad` normalize to `deg`; bare `0`/`1` angle values emit `0deg`/`1deg` instead of `calc(1deg * n)`.
+- **`-webkit-mask-composite: intersect`** now maps to `source-in` for WebKit.
+- Redundant `str_starts_with(path, '--')` guard removed before theme-prefix substitution, clearing the two standing PHPStan errors in `index.php` and `css-functions.php`.
+
 ## [1.4.2] - 2026-06-03
 
 ### Fixed

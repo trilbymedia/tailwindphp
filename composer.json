@@ -1,6 +1,6 @@
 {
-    "name": "tailwindphp/tailwindphp",
-    "description": "A full port of TailwindCSS 4.x to PHP",
+    "name": "trilbymedia/tailwindphp",
+    "description": "A full port of TailwindCSS 4.x to PHP. Trilby Media maintained fork of inline0/tailwindphp.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -10,17 +10,25 @@
         "utility-css",
         "php"
     ],
-    "homepage": "https://github.com/dnnsjsk/tailwindphp",
+    "homepage": "https://github.com/trilbymedia/tailwindphp",
     "bin": [
         "bin/tailwindphp"
     ],
     "support": {
-        "issues": "https://github.com/dnnsjsk/tailwindphp/issues",
-        "source": "https://github.com/dnnsjsk/tailwindphp"
+        "issues": "https://github.com/trilbymedia/tailwindphp/issues",
+        "source": "https://github.com/trilbymedia/tailwindphp"
     },
     "authors": [
         {
-            "name": "Dennis Josek"
+            "name": "Dennis Josek",
+            "homepage": "https://github.com/inline0/tailwindphp",
+            "role": "Original author"
+        },
+        {
+            "name": "Andy Miller",
+            "email": "andy@trilbymedia.com",
+            "homepage": "https://trilby.media",
+            "role": "Fork maintainer"
         }
     ],
     "require": {
