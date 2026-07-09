@@ -55,7 +55,10 @@ class CssMinifier
         $css = preg_replace('/\s+/', ' ', $css);
 
         $out = '';
-        $depth = 0;
+        $depth = 0;         // parenthesis nesting depth
+        $inDecl = false;    // are we directly inside a declaration block?
+        $blockStack = [];   // saved $inDecl for each open brace
+        $prelude = '';      // text of the current selector / at-rule prelude
         $len = strlen($css);
 
         for ($i = 0; $i < $len; $i++) {
@@ -63,6 +66,7 @@ class CssMinifier
 
             if ($ch === '(') {
                 $depth++;
+                $prelude .= $ch;
                 $out .= $ch;
 
                 continue;
@@ -70,23 +74,66 @@ class CssMinifier
 
             if ($ch === ')') {
                 $depth = max(0, $depth - 1);
+                $prelude .= $ch;
+                $out .= $ch;
+
+                continue;
+            }
+
+            // A `{` opens a block; decide whether its body holds declarations
+            // (a selector or a declaration-style at-rule like @font-face) or
+            // nested rules (@media/@supports/@keyframes/...). Only inside a
+            // declaration block is a `:` a property/value separator.
+            if ($ch === '{') {
+                $blockStack[] = $inDecl;
+                $inDecl = self::opensDeclarationBlock($prelude);
+                $prelude = '';
+                $out .= $ch;
+
+                continue;
+            }
+
+            if ($ch === '}') {
+                $inDecl = array_pop($blockStack) ?? false;
+                $prelude = '';
+                $out .= $ch;
+
+                continue;
+            }
+
+            if ($ch === ';') {
+                $prelude = '';
                 $out .= $ch;
 
                 continue;
             }
 
             if ($ch === ' ') {
+                // Keep the space in the prelude so at-rule keywords stay separated
+                // from their arguments (e.g. `@layer utilities`, not the run-on
+                // `@layerutilities`) when opensDeclarationBlock() inspects it.
+                $prelude .= ' ';
+
                 $prev = $out !== '' ? substr($out, -1) : '';
                 $next = $i + 1 < $len ? $css[$i + 1] : '';
 
                 $stripAfter = '{};:(';
-                $stripBefore = '{};:,)';
+                $stripBefore = '{};,)';
 
                 if ($depth === 0) {
                     $stripAfter .= ',';
                 }
 
-                if (str_contains($stripAfter, $prev) || str_contains($stripBefore, $next)) {
+                // A space before `:` is a descendant combinator before a
+                // pseudo-class in selector context (e.g. `.prose :where(h1)`) and
+                // must be preserved, but a property/value separator inside a
+                // declaration block or a media feature inside parens
+                // (e.g. `color :red`, `(min-width :640px)`) and must be stripped.
+                $stripColonBefore = $inDecl || $depth > 0;
+
+                if (str_contains($stripAfter, $prev)
+                    || str_contains($stripBefore, $next)
+                    || ($next === ':' && $stripColonBefore)) {
                     continue;
                 }
 
@@ -97,12 +144,46 @@ class CssMinifier
                         continue;
                     }
                 }
+
+                $out .= $ch;
+
+                continue;
             }
 
+            $prelude .= $ch;
             $out .= $ch;
         }
 
         return str_replace(';}', '}', $out);
+    }
+
+    /**
+     * Decide whether the block opened after the given prelude contains
+     * declarations (true) or nested rules (false). Selectors and declaration-
+     * style at-rules (@font-face, @page, @property, keyframe steps) hold
+     * declarations; grouping/conditional at-rules (@media, @supports, @container,
+     * @layer, @scope, @keyframes, ...) hold nested rules.
+     */
+    private static function opensDeclarationBlock(string $prelude): bool
+    {
+        $prelude = ltrim($prelude);
+
+        if ($prelude === '' || $prelude[0] !== '@') {
+            return true;
+        }
+
+        // Extract the at-rule keyword (letters/dashes after the `@`).
+        preg_match('/^@-?[a-z]+(?:-[a-z]+)*/i', $prelude, $m);
+        $name = strtolower(ltrim($m[0] ?? '', '@'));
+        // Normalize a vendor prefix (e.g. -webkit-keyframes -> keyframes).
+        $name = preg_replace('/^(webkit|moz|ms|o)-/', '', $name);
+
+        $ruleListAtRules = [
+            'media', 'supports', 'container', 'layer', 'scope',
+            'document', 'keyframes',
+        ];
+
+        return !in_array($name, $ruleListAtRules, true);
     }
 
     /**

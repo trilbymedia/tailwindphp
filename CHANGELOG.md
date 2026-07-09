@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Trilby Media fork
+## [1.4.3] - 2026-07-08
 
-Fixes maintained in the [Trilby Media fork](https://github.com/trilbymedia/tailwindphp)
-on top of upstream `1.4.2`. Each is offered back to upstream as a PR where noted;
-this section tracks what the fork carries beyond [inline0/tailwindphp](https://github.com/inline0/tailwindphp).
+First tagged release of the [Trilby Media fork](https://github.com/trilbymedia/tailwindphp),
+carrying the fixes below on top of upstream `1.4.2`. Each is offered back to upstream as a
+PR where noted; this list is what the fork carries beyond [inline0/tailwindphp](https://github.com/inline0/tailwindphp).
 
 ### Added
 
@@ -21,6 +21,7 @@ this section tracks what the fork carries beyond [inline0/tailwindphp](https://g
 
 ### Fixed
 
+- **Minifier collapsed the descendant combinator before a pseudo-class** — a space before `:` in a selector (e.g. `.prose :where(h1)`, the shape `@tailwindcss/typography` emits for every prose child) was stripped, rewriting it into the compound `.prose:where(h1)` that matches nothing. `removeWhitespace()` now tracks selector vs declaration context and only strips the space where it is a property/value separator, not where it is a combinator.
 - **Nested rules dropped when `@apply` expands to multiple declarations** (upstream PR [inline0/tailwindphp#4](https://github.com/inline0/tailwindphp/pull/4)).
 - **Mask angle units** — linear/conic angles in `rad` normalize to `deg`; bare `0`/`1` angle values emit `0deg`/`1deg` instead of `calc(1deg * n)`.
 - **`-webkit-mask-composite: intersect`** now maps to `source-in` for WebKit.

@@ -42,6 +42,19 @@ class CssMinifier extends TestCase
         $this->assertEquals('.foo>.bar{color:red}', $result);
     }
 
+    public function test_preserves_descendant_combinator_before_pseudo(): void
+    {
+        // A space before a pseudo-class is a descendant combinator and must be
+        // preserved: `.prose :where(h1)` (h1 inside .prose) must not collapse to
+        // `.prose:where(h1)` (an element that is both .prose and h1). This is the
+        // shape @tailwindcss/typography emits for every prose child rule.
+        $css = '.prose :where(h1):not(:where([class~="not-prose"])) { color: red; }';
+        $result = Minifier::minify($css);
+
+        $this->assertStringContainsString('.prose :where(h1)', $result);
+        $this->assertStringNotContainsString('.prose:where(h1)', $result);
+    }
+
     public function test_shortens_hex_colors(): void
     {
         $css = '.foo { color: #ffffff; background: #aabbcc; }';
