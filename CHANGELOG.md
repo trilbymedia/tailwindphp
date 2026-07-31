@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-07-31
+
+### Fixed
+
+- **A grouped parent selector is now wrapped in `:is()` when nesting is flattened.** Substituting a
+  selector list raw turned `.a, .b { @apply hover:underline }` into `.a, .b:hover`, where the variant
+  binds to the last selector only and every earlier selector receives the styles unconditionally. The
+  same applied to a nested rule without `&`, which produced `.a, .b span` instead of `:is(.a, .b) span`.
+  Real-world impact: any `@apply dark:*` inside a grouped selector leaked its dark-mode declarations
+  into light mode. A lone parent selector is still substituted verbatim, so single-selector output is
+  unchanged. This bug is present upstream as well.
+
 ## [1.6.1] - 2026-07-31
 
 Merges upstream [inline0/tailwindphp](https://github.com/inline0/tailwindphp) `1.6.0` into the
