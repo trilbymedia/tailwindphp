@@ -1,0 +1,236 @@
+{
+    "recorded": "2026-07-17T23:33:26+00:00",
+    "commit": "dc5bbef",
+    "branch": "perf/engine-program",
+    "php": "8.5.6",
+    "xdebug_mode": "off",
+    "protocol": {
+        "cold": "Tailwind::generate minify=true, full pipeline per call, median of 5",
+        "warm": "shared warm TailwindCompiler per css input, generateExact minify=true, median of 5",
+        "repeat": "fresh compiler per fixture, generate once, then median of 20 repeats of the same candidate set",
+        "batch": "fresh compiler, all 8 fixtures sequentially via generateExact minify=true, median across 5 batch runs"
+    },
+    "inputs": {
+        "minimal": {
+            "bytes": 23
+        },
+        "theme": {
+            "bytes": 88603
+        }
+    },
+    "fixtures": {
+        "divine-large": {
+            "candidates": 430
+        },
+        "divine-median": {
+            "candidates": 249
+        },
+        "glaze-large": {
+            "candidates": 181
+        },
+        "glaze-median": {
+            "candidates": 180
+        },
+        "queuety-large": {
+            "candidates": 182
+        },
+        "queuety-median": {
+            "candidates": 180
+        },
+        "sleek-large": {
+            "candidates": 214
+        },
+        "sleek-median": {
+            "candidates": 220
+        }
+    },
+    "cold_generate_ms": {
+        "minimal": {
+            "divine-large": 14.995,
+            "divine-median": 12.567,
+            "glaze-large": 11.671,
+            "glaze-median": 11.621,
+            "queuety-large": 11.287,
+            "queuety-median": 11.353,
+            "sleek-large": 12.574,
+            "sleek-median": 14.179,
+            "_mean": 12.531
+        },
+        "theme": {
+            "divine-large": 61.398,
+            "divine-median": 58.847,
+            "glaze-large": 58.417,
+            "glaze-median": 56.768,
+            "queuety-large": 58.289,
+            "queuety-median": 57.485,
+            "sleek-large": 62.147,
+            "sleek-median": 60.962,
+            "_mean": 59.289
+        }
+    },
+    "warm_compiler": {
+        "minimal": {
+            "setup_ms": 6.058,
+            "per_page_exact_ms": {
+                "divine-large": 4.161,
+                "divine-median": 2.556,
+                "glaze-large": 1.579,
+                "glaze-median": 1.579,
+                "queuety-large": 1.386,
+                "queuety-median": 1.577,
+                "sleek-large": 2.308,
+                "sleek-median": 2.511
+            },
+            "per_page_mean_ms": 2.207
+        },
+        "theme": {
+            "setup_ms": 38.503,
+            "per_page_exact_ms": {
+                "divine-large": 6.732,
+                "divine-median": 4.593,
+                "glaze-large": 3.546,
+                "glaze-median": 3.408,
+                "queuety-large": 3.399,
+                "queuety-median": 2.872,
+                "sleek-large": 3.927,
+                "sleek-median": 4.214
+            },
+            "per_page_mean_ms": 4.086
+        }
+    },
+    "repeat_floor_ms": {
+        "minimal": {
+            "divine-large": {
+                "minify_off": 0.219,
+                "minify_on": 0.273
+            },
+            "divine-median": {
+                "minify_off": 0.141,
+                "minify_on": 0.199
+            },
+            "glaze-large": {
+                "minify_off": 0.101,
+                "minify_on": 0.149
+            },
+            "glaze-median": {
+                "minify_off": 0.098,
+                "minify_on": 0.144
+            },
+            "queuety-large": {
+                "minify_off": 0.1,
+                "minify_on": 0.127
+            },
+            "queuety-median": {
+                "minify_off": 0.1,
+                "minify_on": 0.131
+            },
+            "sleek-large": {
+                "minify_off": 0.134,
+                "minify_on": 0.185
+            },
+            "sleek-median": {
+                "minify_off": 0.148,
+                "minify_on": 0.181
+            },
+            "_mean": {
+                "minify_off": 0.13,
+                "minify_on": 0.174
+            }
+        },
+        "theme": {
+            "divine-large": {
+                "minify_off": 0.891,
+                "minify_on": 1.148
+            },
+            "divine-median": {
+                "minify_off": 0.739,
+                "minify_on": 0.963
+            },
+            "glaze-large": {
+                "minify_off": 0.666,
+                "minify_on": 1
+            },
+            "glaze-median": {
+                "minify_off": 0.682,
+                "minify_on": 0.886
+            },
+            "queuety-large": {
+                "minify_off": 0.626,
+                "minify_on": 0.898
+            },
+            "queuety-median": {
+                "minify_off": 0.729,
+                "minify_on": 0.875
+            },
+            "sleek-large": {
+                "minify_off": 0.806,
+                "minify_on": 0.935
+            },
+            "sleek-median": {
+                "minify_off": 0.866,
+                "minify_on": 1.214
+            },
+            "_mean": {
+                "minify_off": 0.751,
+                "minify_on": 0.99
+            }
+        }
+    },
+    "batch": {
+        "minimal": {
+            "setup_ms": 8.055,
+            "per_page_ms": {
+                "divine-large": 10.3,
+                "divine-median": 3.005,
+                "glaze-large": 2.279,
+                "glaze-median": 1.629,
+                "queuety-large": 1.616,
+                "queuety-median": 1.56,
+                "sleek-large": 2.993,
+                "sleek-median": 2.82
+            },
+            "pages_total_ms": 25.929,
+            "total_with_setup_ms": 33.984,
+            "per_page_mean_ms": 3.241
+        },
+        "theme": {
+            "setup_ms": 39.269,
+            "per_page_ms": {
+                "divine-large": 26.852,
+                "divine-median": 6.241,
+                "glaze-large": 3.86,
+                "glaze-median": 3.267,
+                "queuety-large": 3.256,
+                "queuety-median": 3.198,
+                "sleek-large": 4.727,
+                "sleek-median": 4.479
+            },
+            "pages_total_ms": 57.047,
+            "total_with_setup_ms": 96.315,
+            "per_page_mean_ms": 7.131
+        }
+    },
+    "baseline_pre_program": {
+        "source": "mono-theme prds/014_RENDER_ENGINE_AND_STACK_DEEP_DIVE.md Finding 3 and 014_reports/tailwindphp-deep-dive-raw.json verify table, xdebug off, same machine",
+        "variance": "baseline documented +/-10% run-to-run variance and this file records single-run medians, so treat every ratio below as approximate",
+        "cold_generate_ms": 66,
+        "warm_first_visit_per_page_ms_range": [
+            9,
+            30
+        ],
+        "warm_repeat_minify_on_ms": 8,
+        "warm_repeat_minify_off_ms": 0.9
+    },
+    "comparison": {
+        "notes": {
+            "cold": "cold_theme_mean vs the 66 ms baseline; the delta sits inside the baseline run variance, and cold still rebuilds the invariant prefix",
+            "warm_first_visit": "batch per_page medians are the like-for-like first-visit pair against the 9-30 ms baseline range; the ratio divides by the conservative 9 ms low end",
+            "warm_memoized": "warm_compiler per_page_exact medians re-run the same candidate set, so samples after the first hit the design-system candidate memos; they have no pre-program analogue and get no baseline ratio",
+            "repeat": "repeat floor pairs against the old warm-repeat floor of ~8 ms minified and 0.9 ms unminified"
+        },
+        "cold_theme_mean_vs_baseline": 0.898,
+        "batch_theme_first_visit_vs_baseline_low_end": 0.792,
+        "repeat_theme_minify_on_vs_baseline": 0.124,
+        "repeat_theme_minify_off_vs_baseline": 0.834
+    }
+}

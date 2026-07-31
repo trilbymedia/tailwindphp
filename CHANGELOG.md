@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-07-31
+
+Merges upstream [inline0/tailwindphp](https://github.com/inline0/tailwindphp) `1.6.0` into the
+fork. Every fork fix listed under `1.4.3` is still carried: none of them were fixed upstream, and
+the two offered as PRs ([#4](https://github.com/inline0/tailwindphp/pull/4),
+[#5](https://github.com/inline0/tailwindphp/pull/5)) remain unreviewed.
+
+### Added
+
+- Everything in upstream `1.5.0` and `1.6.0` below: the persistent construction-state cache,
+  `generateExact()` / `cssExact()`, serializer-based minification, and the `buildExact` /
+  `designSystem` keys on the `compile()` array.
+
+### Notes
+
+- `Tailwind::minify()` (the string-based minifier) still carries the fork's descendant-combinator
+  fix. Upstream's serializer minify path is structural and never had the bug, but their string
+  minifier is still affected, so consumers calling `CssMinifier::minify()` need this fork.
+- Upstream independently made the same `str_starts_with($path, '--')` prefix change in
+  `css-functions.php` that the fork carried. The matching change in `index.php` is still fork-only.
+
+## [1.6.0] - 2026-07-22
+
+### Added
+
+- Persistent construction-state cache. `TailwindCompiler` (and `tw::compile()`) accept a `stateCacheFile` option: the expensive, deterministic phase of compiler construction (framework import resolution, resource parsing, theme accumulation) is persisted per CSS input as an OPcache-shareable PHP file and rehydrated on later constructions, dropping warm construction from roughly 25ms to 6ms with byte-identical output. Cache files validate against an engine fingerprint, the input key, and the mtime/size of any filesystem imports; inputs using a custom `importResolver` bypass the cache. `TailwindPHP\StateCache\compileCssCached()` exposes the same behavior around `compile()`'s array API.
+- `TailwindPHP\parseCssState()` and `TailwindPHP\finalizeCssState()` split `parseCss()` into its serializable phase and its closure-rebuilding phase, and `TailwindPHP\compileParsed()` assembles the compiled build API from a parse result. `parseCss()` and `compileAst()` behave exactly as before.
+
+## [1.5.0] - 2026-07-18
+
+### Added
+
+- `TailwindCompiler::generateExact()` and `TailwindCompiler::cssExact()` compile exactly the given content or candidate set per call, without accumulating candidates from earlier calls on the same compiler, while still reusing its parsed design system. This is the recommended pattern for per-page CSS from one long-lived compiler: `tw::compile($css)` once, then `generateExact($html, true)` per page.
+- `TailwindCompiler::generate()` and `TailwindCompiler::css()` accept an optional `$minify` parameter, and the `build` closure returned by `TailwindPHP\compile()` accepts an optional second `$minify` argument. Minified output is emitted directly during serialization instead of a post-hoc string pass.
+- The array returned by `TailwindPHP\compile()` gains additive `buildExact` and `designSystem` keys.
+
+### Changed
+
+- Minified output is now produced by the serializer rather than the string-based `CssMinifier` post-pass. Bytes differ slightly from earlier releases for identical input (structurally equivalent, within 1% in size), so caches keyed on minified output hashes will bust once. Descendant `:not()` selectors are now preserved when minifying: `.x :not(p)` no longer collapses to `.x:not(p)`.
+- The CLI `-m`/`--minify` and `--optimize` flags use the same serializer path, so CLI output matches `generate(['minify' => true])` byte for byte. `Tailwind::minify()` remains available as the string-based minifier for arbitrary CSS; prefer the `minify` option or parameter for generated output.
+- `TailwindCompiler` introspection (`properties()`, `computedProperties()`, `value()`) now reuses the fully registered design system, so custom `@utility` names return their declarations instead of nothing.
+
+### Upgrade notes
+
+- Subclasses of `TailwindCompiler` that override `generate()` or `css()` must add the optional `bool $minify = false` parameter to their override signature; PHP rejects child declarations that omit a parent's optional parameter.
+
 ## [1.4.3] - 2026-07-08
 
 First tagged release of the [Trilby Media fork](https://github.com/trilbymedia/tailwindphp),

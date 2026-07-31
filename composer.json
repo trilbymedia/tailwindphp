@@ -83,7 +83,8 @@
             "src/plugin.php",
             "src/plugin/plugins/typography-plugin.php",
             "src/plugin/plugins/forms-plugin.php",
-            "src/index.php"
+            "src/index.php",
+            "src/state-cache.php"
         ]
     },
     "autoload-dev": {

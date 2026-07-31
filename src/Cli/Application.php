@@ -183,13 +183,8 @@ class Application
         // Scan for candidates
         $candidates = $this->scanSources($sources);
 
-        // Build CSS
-        $result = $compiled['build']($candidates);
-
-        // Minify/optimize if requested
-        if ($minify || $optimize) {
-            $result = Tailwind::minify($result);
-        }
+        // Build CSS, minified during serialization when requested
+        $result = $compiled['build']($candidates, $minify || $optimize);
 
         // Write output
         if ($outputFile === '-') {
@@ -306,13 +301,9 @@ class Application
                         $sources = $newSources;
                     }
 
-                    // Scan and build
+                    // Scan and build, minified during serialization when requested
                     $candidates = $this->scanSources($sources);
-                    $result = $compiled['build']($candidates);
-
-                    if ($minify) {
-                        $result = Tailwind::minify($result);
-                    }
+                    $result = $compiled['build']($candidates, $minify);
 
                     // Write output
                     if ($outputFile !== '-') {
