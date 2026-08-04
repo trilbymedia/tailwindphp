@@ -832,6 +832,31 @@ function compileParsed(array &$ast, array $result, array $options = []): array
 }
 
 /**
+ * Pick the `source(…)` modifier out of an `@import` modifier list.
+ *
+ * Returns the modifier verbatim (e.g. `source(none)`) so it can be appended to
+ * the `@tailwind utilities` node the import expands to, or an empty string when
+ * the import carries no `source(…)`.
+ *
+ * @param string $modifiers
+ * @return string
+ */
+function sourceModifier(string $modifiers): string
+{
+    if ($modifiers === '' || !str_contains($modifiers, 'source(')) {
+        return '';
+    }
+
+    foreach (\TailwindPHP\Utils\segment($modifiers, ' ') as $modifier) {
+        if (str_starts_with($modifier, 'source(')) {
+            return $modifier;
+        }
+    }
+
+    return '';
+}
+
+/**
  * Parse CSS and extract theme, utilities, variants, etc.
  *
  * @param array $ast CSS AST
@@ -879,7 +904,7 @@ function parseCssState(array &$ast, array $options = []): array
     $seenVirtualModules = [];
 
     // Walk AST to find @tailwind utilities, @theme, @source, @utility, @custom-variant, @plugin, @media important
-    walk($ast, function (&$node, $ctx) use (&$features, &$theme, &$utilitiesNodePath, &$sources, &$inlineCandidates, &$ignoredCandidates, &$firstThemeRule, &$important, &$customVariants, &$plugins, $options, &$seenFiles, &$seenVirtualModules) {
+    walk($ast, function (&$node, $ctx) use (&$features, &$theme, &$utilitiesNodePath, &$sources, &$inlineCandidates, &$ignoredCandidates, &$root, &$firstThemeRule, &$important, &$customVariants, &$plugins, $options, &$seenFiles, &$seenVirtualModules) {
         if ($node['kind'] !== 'at-rule') {
             return WalkAction::Continue;
         }
@@ -891,6 +916,37 @@ function parseCssState(array &$ast, array $options = []): array
             // Any additional @tailwind utilities nodes can be removed
             if ($utilitiesNodePath !== null) {
                 return WalkAction::Replace([]);
+            }
+
+            // Handle `source(…)` on the utilities node. It arrives here either
+            // written by hand or pushed down from an `@import "tailwindcss"
+            // source(…)` modifier, and it decides the automatic content root:
+            // `none` disables auto-detection, a path replaces it.
+            foreach (\TailwindPHP\Utils\segment($node['params'], ' ') as $param) {
+                if (!str_starts_with($param, 'source(')) {
+                    continue;
+                }
+
+                $sourcePath = substr($param, 7, -1);
+
+                if ($sourcePath === 'none') {
+                    $root = 'none';
+
+                    continue;
+                }
+
+                if (
+                    ($sourcePath[0] === '"' && $sourcePath[strlen($sourcePath) - 1] !== '"') ||
+                    ($sourcePath[0] === "'" && $sourcePath[strlen($sourcePath) - 1] !== "'") ||
+                    ($sourcePath[0] !== "'" && $sourcePath[0] !== '"')
+                ) {
+                    throw new \Exception('`source(…)` paths must be quoted.');
+                }
+
+                $root = [
+                    'base' => $options['base'] ?? '',
+                    'pattern' => substr($sourcePath, 1, -1),
+                ];
             }
 
             // Store the path to this node for later modification
@@ -1046,8 +1102,9 @@ function parseCssState(array &$ast, array $options = []): array
                     $preflightCss = readResourceFile('preflight.css');
                     $preflightAst = parse($preflightCss);
 
-                    // Create utilities node
-                    $utilitiesNode = atRule('@tailwind', 'utilities', []);
+                    // Create utilities node, carrying any `source(…)` modifier so the
+                    // @tailwind utilities handler can turn it into the content root
+                    $utilitiesNode = atRule('@tailwind', trim('utilities ' . sourceModifier($modifiers)), []);
 
                     // Apply modifiers to theme if present
                     if (str_contains($modifiers, 'theme(')) {
@@ -1100,7 +1157,7 @@ function parseCssState(array &$ast, array $options = []): array
 
                 // Handle 'tailwindcss/utilities' or 'tailwindcss/utilities.css'
                 if ($importPath === 'tailwindcss/utilities' || $importPath === 'tailwindcss/utilities.css') {
-                    $utilityNode = atRule('@tailwind', 'utilities', []);
+                    $utilityNode = atRule('@tailwind', trim('utilities ' . sourceModifier($modifiers)), []);
 
                     // If there's an 'important' modifier
                     if (str_contains($modifiers, 'important')) {
@@ -1332,6 +1389,27 @@ function parseCssState(array &$ast, array $options = []): array
                                 $child['params'] = trim($child['params'] . ' ' . $themeParams);
 
                                 return WalkAction::Skip;
+                            }
+
+                            return WalkAction::Continue;
+                        });
+                    }
+                }
+                // Handle @media source(…)
+                // A file imported as `@import "…" source(…)` becomes `@media source(…) { … }`.
+                // Push the modifier down onto the `@tailwind utilities` node inside so the
+                // content root is picked up when that node is visited.
+                elseif (str_starts_with($param, 'source(')) {
+                    if (isset($node['nodes'])) {
+                        walk($node['nodes'], function (&$child) use ($param) {
+                            if (
+                                $child['kind'] === 'at-rule' &&
+                                $child['name'] === '@tailwind' &&
+                                $child['params'] === 'utilities'
+                            ) {
+                                $child['params'] .= ' ' . $param;
+
+                                return WalkAction::Stop;
                             }
 
                             return WalkAction::Continue;

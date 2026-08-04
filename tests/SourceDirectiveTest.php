@@ -403,4 +403,62 @@ class SourceDirectiveTest extends TestCase
         ]);
         $this->assertStringNotContainsString('@source', $css);
     }
+
+    // ==================================================
+    // source(…) modifier — the automatic content root
+    // ==================================================
+
+    #[Test]
+    public function no_source_modifier_leaves_the_root_auto_detected(): void
+    {
+        $compiled = \TailwindPHP\compile('@import "tailwindcss";', ['base' => '/project']);
+        $this->assertNull($compiled['root']);
+    }
+
+    #[Test]
+    public function source_none_disables_the_automatic_root(): void
+    {
+        $compiled = \TailwindPHP\compile('@import "tailwindcss" source(none);', ['base' => '/project']);
+        $this->assertSame('none', $compiled['root']);
+    }
+
+    #[Test]
+    public function source_none_on_the_utilities_import_disables_the_automatic_root(): void
+    {
+        $compiled = \TailwindPHP\compile(
+            '@import "tailwindcss/theme"; @import "tailwindcss/utilities" source(none);',
+            ['base' => '/project'],
+        );
+        $this->assertSame('none', $compiled['root']);
+    }
+
+    #[Test]
+    public function source_path_replaces_the_automatic_root(): void
+    {
+        $compiled = \TailwindPHP\compile('@import "tailwindcss" source("./sub");', ['base' => '/project']);
+        $this->assertSame(['base' => '/project', 'pattern' => './sub'], $compiled['root']);
+    }
+
+    #[Test]
+    public function source_none_still_allows_explicit_source_directives(): void
+    {
+        $compiled = \TailwindPHP\compile(
+            '@import "tailwindcss" source(none); @source "./templates";',
+            ['base' => '/project'],
+        );
+        $this->assertSame('none', $compiled['root']);
+        $this->assertSame(
+            [['base' => '/project', 'pattern' => './templates', 'negated' => false]],
+            $compiled['sources'],
+        );
+    }
+
+    #[Test]
+    public function unquoted_source_path_is_rejected(): void
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('`source(…)` paths must be quoted.');
+
+        \TailwindPHP\compile('@import "tailwindcss" source(sub);', ['base' => '/project']);
+    }
 }

@@ -457,4 +457,79 @@ class CliTest extends TestCase
             chdir($originalDir);
         }
     }
+
+    // ==================================================
+    // source(…) — the automatic content root
+    // ==================================================
+
+    /**
+     * Build a fixture project holding `flex` in ./templates, `grid` in ./other
+     * and `table` in a stray file at the root, then compile the given CSS.
+     */
+    private function buildSourceFixture(string $css): string
+    {
+        $inputFile = $this->testDir . '/app.css';
+        $outputFile = $this->testDir . '/output.css';
+
+        mkdir($this->testDir . '/templates');
+        file_put_contents($this->testDir . '/templates/index.html', '<div class="flex"></div>');
+        mkdir($this->testDir . '/other');
+        file_put_contents($this->testDir . '/other/index.html', '<div class="grid"></div>');
+        file_put_contents($this->testDir . '/stray.html', '<div class="table"></div>');
+        file_put_contents($inputFile, $css);
+
+        $input = new Input(['tailwindphp', '-i', $inputFile, '-o', $outputFile]);
+
+        $originalDir = getcwd();
+        chdir($this->testDir);
+
+        try {
+            $app = new Application($input, $this->createMock(Output::class));
+            $this->assertSame(0, $app->run());
+
+            return file_get_contents($outputFile) ?: '';
+        } finally {
+            chdir($originalDir);
+        }
+    }
+
+    #[Test]
+    public function build_auto_detects_sources_without_a_source_modifier(): void
+    {
+        $css = $this->buildSourceFixture('@import "tailwindcss";');
+
+        $this->assertStringContainsString('.flex', $css);
+        $this->assertStringContainsString('.grid', $css);
+        $this->assertStringContainsString('.table', $css);
+    }
+
+    #[Test]
+    public function build_with_source_none_scans_nothing_automatically(): void
+    {
+        $css = $this->buildSourceFixture('@import "tailwindcss" source(none);');
+
+        $this->assertStringNotContainsString('.flex', $css);
+        $this->assertStringNotContainsString('.grid', $css);
+        $this->assertStringNotContainsString('.table', $css);
+    }
+
+    #[Test]
+    public function build_with_source_none_still_honours_explicit_source_directives(): void
+    {
+        $css = $this->buildSourceFixture('@import "tailwindcss" source(none); @source "./templates";');
+
+        $this->assertStringContainsString('.flex', $css);
+        $this->assertStringNotContainsString('.grid', $css);
+        $this->assertStringNotContainsString('.table', $css);
+    }
+
+    #[Test]
+    public function build_with_a_source_path_replaces_the_auto_detected_root(): void
+    {
+        $css = $this->buildSourceFixture('@import "tailwindcss" source("./templates");');
+
+        $this->assertStringContainsString('.flex', $css);
+        $this->assertStringNotContainsString('.grid', $css);
+        $this->assertStringNotContainsString('.table', $css);
+    }
 }

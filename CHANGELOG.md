@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-08-04
+
+### Fixed
+
+- **Utilities that compose a shorthand from several `--tw-*` variables now register every member of
+  the group with `@property`.** 39 registrations were missing, so a rule like `.translate-x-7 {
+  --tw-translate-x: calc(var(--spacing) * 7); translate: var(--tw-translate-x) var(--tw-translate-y) }`
+  set its variable correctly but left `translate` invalid at computed-value time — `--tw-translate-y`
+  was never registered, so it had no initial value and the whole composed declaration was dropped.
+  The element did not move. Affected groups: `translate-*`, `scale-*`, `rotate-x/y/z-*`, `skew-*`,
+  `transform`, the `filter` and `backdrop-filter` families, `duration-*`, `ease-*`, `leading-*`,
+  `tracking-*`, the `font-variant-numeric` utilities, `contain-*`, `touch-pan-*`, `snap-*` and
+  `border-spacing-*`. The `@property` output now matches the Node engine exactly. Reported against
+  the Grav Tailwind4 plugin in
+  [trilbymedia/grav-plugin-tailwind4#1](https://github.com/trilbymedia/grav-plugin-tailwind4/issues/1);
+  this bug is present upstream as well.
+- **`source(…)` on the `tailwindcss` import is no longer ignored.** `@import "tailwindcss"
+  source(none)` was accepted and then treated as a no-op, so the CLI kept auto-detecting content
+  from the working directory and pulled in classes the CSS had explicitly opted out of. The
+  modifier is now parsed into a `root` value on the compile result — `'none'` to disable
+  auto-detection, `{base, pattern}` for `source("path")` to replace it — and the CLI honours it.
+  An unquoted path now raises `` `source(…)` paths must be quoted. `` as it does upstream.
+  Explicit `@source` directives are unaffected and still apply alongside `source(none)`.
+
 ## [1.6.2] - 2026-07-31
 
 ### Fixed

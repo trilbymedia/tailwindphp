@@ -177,8 +177,10 @@ class Application
         $sources = $compiled['sources'] ?? [];
 
         // Tailwind v4 auto-detects sources from the project root. @source directives add
-        // more paths; they do not replace auto-detection unless source(none) is used.
-        array_unshift($sources, ['base' => getcwd(), 'pattern' => '**/*', 'negated' => false]);
+        // more paths; they do not replace auto-detection unless source(…) is used on the
+        // `@import "tailwindcss"`: `source(none)` drops the automatic root entirely and
+        // `source("path")` replaces it.
+        $sources = array_merge($this->autoDetectedSources($compiled['root'] ?? null), $sources);
 
         // Scan for candidates
         $candidates = $this->scanSources($sources);
@@ -209,6 +211,29 @@ class Application
         }
 
         return 0;
+    }
+
+    /**
+     * Resolve the automatically detected content source for a compiled root.
+     *
+     * `null` means auto-detect everything below the working directory, `'none'`
+     * means the CSS opted out of auto-detection, and an array is an explicit
+     * replacement root from `source("path")`.
+     *
+     * @param mixed $root
+     * @return array<array{base: string, pattern: string, negated: bool}>
+     */
+    private function autoDetectedSources(mixed $root): array
+    {
+        if ($root === 'none') {
+            return [];
+        }
+
+        if ($root === null) {
+            return [['base' => getcwd(), 'pattern' => '**/*', 'negated' => false]];
+        }
+
+        return [['base' => $root['base'], 'pattern' => $root['pattern'], 'negated' => false]];
     }
 
     /**
