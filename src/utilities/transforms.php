@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace TailwindPHP\Utilities;
 
+use function TailwindPHP\Ast\atRoot;
 use function TailwindPHP\Ast\decl;
 
 use TailwindPHP\Theme;
@@ -101,24 +102,38 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     // Translate
     // ==================================================
 
+    // @property rules registering the translate variables. Without these the
+    // `translate: var(--tw-translate-x) var(--tw-translate-y)` composition is
+    // invalid at computed-value time whenever only one axis has been set.
+    $translateProperties = function () {
+        return atRoot([
+            property('--tw-translate-x', '0'),
+            property('--tw-translate-y', '0'),
+            property('--tw-translate-z', '0'),
+        ]);
+    };
+
     // translate-none
     $builder->staticUtility('translate-none', [['translate', 'none']]);
 
     // translate-full / -translate-full
     $builder->staticUtility('translate-full', [
+        fn () => $translateProperties(),
         ['--tw-translate-x', '100%'],
         ['--tw-translate-y', '100%'],
         ['translate', 'var(--tw-translate-x) var(--tw-translate-y)'],
     ]);
     $builder->staticUtility('-translate-full', [
+        fn () => $translateProperties(),
         ['--tw-translate-x', '-100%'],
         ['--tw-translate-y', '-100%'],
         ['translate', 'var(--tw-translate-x) var(--tw-translate-y)'],
     ]);
 
     // translate-* (spacing-based)
-    $builder->spacingUtility('translate', ['--translate', '--spacing'], function ($value) {
+    $builder->spacingUtility('translate', ['--translate', '--spacing'], function ($value) use ($translateProperties) {
         return [
+            $translateProperties(),
             decl('--tw-translate-x', $value),
             decl('--tw-translate-y', $value),
             decl('translate', 'var(--tw-translate-x) var(--tw-translate-y)'),
@@ -128,17 +143,20 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     // translate-x-full / -translate-x-full / translate-y-full / -translate-y-full
     foreach (['x', 'y'] as $axis) {
         $builder->staticUtility("translate-{$axis}-full", [
+            fn () => $translateProperties(),
             ["--tw-translate-{$axis}", '100%'],
             ['translate', 'var(--tw-translate-x) var(--tw-translate-y)'],
         ]);
         $builder->staticUtility("-translate-{$axis}-full", [
+            fn () => $translateProperties(),
             ["--tw-translate-{$axis}", '-100%'],
             ['translate', 'var(--tw-translate-x) var(--tw-translate-y)'],
         ]);
 
         // translate-x-* / translate-y-* (spacing-based)
-        $builder->spacingUtility("translate-{$axis}", ['--translate', '--spacing'], function ($value) use ($axis) {
+        $builder->spacingUtility("translate-{$axis}", ['--translate', '--spacing'], function ($value) use ($axis, $translateProperties) {
             return [
+                $translateProperties(),
                 decl("--tw-translate-{$axis}", $value),
                 decl('translate', 'var(--tw-translate-x) var(--tw-translate-y)'),
             ];
@@ -146,8 +164,9 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     }
 
     // translate-z-* (spacing-based, no fractions)
-    $builder->spacingUtility('translate-z', ['--translate', '--spacing'], function ($value) {
+    $builder->spacingUtility('translate-z', ['--translate', '--spacing'], function ($value) use ($translateProperties) {
         return [
+            $translateProperties(),
             decl('--tw-translate-z', $value),
             decl('translate', 'var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)'),
         ];
@@ -155,6 +174,7 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
 
     // translate-3d
     $builder->staticUtility('translate-3d', [
+        fn () => $translateProperties(),
         ['translate', 'var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)'],
     ]);
 
@@ -162,13 +182,22 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     // Scale
     // ==================================================
 
+    // @property rules registering the scale variables
+    $scaleProperties = function () {
+        return atRoot([
+            property('--tw-scale-x', '1'),
+            property('--tw-scale-y', '1'),
+            property('--tw-scale-z', '1'),
+        ]);
+    };
+
     // scale-none
     $builder->staticUtility('scale-none', [['scale', 'none']]);
 
     // scale-* (custom handler for bare integer -> percentage)
     // For arbitrary values, directly set the scale property
     // For named values (theme/bare), use CSS variables for composability
-    $builder->getUtilities()->functional('scale', function ($candidate) use ($builder) {
+    $builder->getUtilities()->functional('scale', function ($candidate) use ($builder, $scaleProperties) {
         $theme = $builder->getTheme();
 
         if ($candidate['value'] === null) {
@@ -201,6 +230,7 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
         }
 
         return [
+            $scaleProperties(),
             decl('--tw-scale-x', $value),
             decl('--tw-scale-y', $value),
             decl('--tw-scale-z', $value),
@@ -209,7 +239,7 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     });
 
     // Negative scale
-    $builder->getUtilities()->functional('-scale', function ($candidate) use ($builder) {
+    $builder->getUtilities()->functional('-scale', function ($candidate) use ($builder, $scaleProperties) {
         $theme = $builder->getTheme();
 
         if ($candidate['value'] === null) {
@@ -244,6 +274,7 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
         $negValue = "calc({$value} * -1)";
 
         return [
+            $scaleProperties(),
             decl('--tw-scale-x', $negValue),
             decl('--tw-scale-y', $negValue),
             decl('--tw-scale-z', $negValue),
@@ -268,8 +299,9 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
 
                 return "{$value['value']}%";
             },
-            'handle' => function ($value) use ($axis, $scaleValue) {
+            'handle' => function ($value) use ($axis, $scaleValue, $scaleProperties) {
                 return [
+                    $scaleProperties(),
                     decl("--tw-scale-{$axis}", $value),
                     decl('scale', $scaleValue),
                 ];
@@ -279,6 +311,7 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
 
     // scale-3d
     $builder->staticUtility('scale-3d', [
+        fn () => $scaleProperties(),
         ['scale', 'var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z)'],
     ]);
 
@@ -316,6 +349,17 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     // Transform value for rotate-x, rotate-y, rotate-z and skew
     $transformValue = 'var(--tw-rotate-x, ) var(--tw-rotate-y, ) var(--tw-rotate-z, ) var(--tw-skew-x, ) var(--tw-skew-y, )';
 
+    // @property rules registering the rotate/skew variables
+    $transformProperties = function () {
+        return atRoot([
+            property('--tw-rotate-x'),
+            property('--tw-rotate-y'),
+            property('--tw-rotate-z'),
+            property('--tw-skew-x'),
+            property('--tw-skew-y'),
+        ]);
+    };
+
     // rotate-x-*, rotate-y-*, rotate-z-*
     foreach (['x', 'y', 'z'] as $axis) {
         $builder->functionalUtility("rotate-{$axis}", [
@@ -329,10 +373,11 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
 
                 return "{$value['value']}deg";
             },
-            'handle' => function ($value) use ($axis, $transformValue) {
+            'handle' => function ($value) use ($axis, $transformValue, $transformProperties) {
                 $rotateFunc = 'rotate' . strtoupper($axis);
 
                 return [
+                    $transformProperties(),
                     decl("--tw-rotate-{$axis}", "{$rotateFunc}({$value})"),
                     decl('transform', $transformValue),
                 ];
@@ -356,8 +401,9 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
 
             return "{$value['value']}deg";
         },
-        'handle' => function ($value) use ($transformValue) {
+        'handle' => function ($value) use ($transformValue, $transformProperties) {
             return [
+                $transformProperties(),
                 decl('--tw-skew-x', "skewX({$value})"),
                 decl('--tw-skew-y', "skewY({$value})"),
                 decl('transform', $transformValue),
@@ -378,10 +424,11 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
 
                 return "{$value['value']}deg";
             },
-            'handle' => function ($value) use ($axis, $transformValue) {
+            'handle' => function ($value) use ($axis, $transformValue, $transformProperties) {
                 $skewFunc = 'skew' . strtoupper($axis);
 
                 return [
+                    $transformProperties(),
                     decl("--tw-skew-{$axis}", "{$skewFunc}({$value})"),
                     decl('transform', $transformValue),
                 ];
@@ -394,6 +441,7 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     // ==================================================
 
     $builder->staticUtility('transform', [
+        fn () => $transformProperties(),
         ['transform', $transformValue],
     ]);
 
@@ -450,8 +498,8 @@ function registerTransformsUtilities(UtilityBuilder $builder): void
     $builder->functionalUtility('transform', [
         'themeKeys' => [],
         'defaultValue' => null,
-        'handle' => function ($value) {
-            return [decl('transform', $value)];
+        'handle' => function ($value) use ($transformProperties) {
+            return [$transformProperties(), decl('transform', $value)];
         },
     ]);
 }

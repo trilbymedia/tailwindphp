@@ -138,4 +138,105 @@ PHP,
         $this->assertLessThan($customBaseLayer, $layerOrder);
         $this->assertMatchesRegularExpression('/@layer utilities\s*\{[^}]*\.text-red-500/s', $css);
     }
+
+    /**
+     * Utilities that compose a shorthand out of several `--tw-*` variables have to
+     * register every member of the group with `@property`. Without the registration
+     * the unset members make the composed value invalid at computed-value time, so
+     * e.g. `translate-x-7` updates `--tw-translate-x` but leaves `translate` at
+     * `none` and nothing moves.
+     *
+     * @dataProvider composedVariableGroups
+     */
+    public function test_composed_variable_groups_register_their_properties(string $class, array $expectedProperties): void
+    {
+        $css = Tailwind::generate([
+            'content' => "<div class=\"{$class}\"></div>",
+            'css' => '@import "tailwindcss";',
+            'minify' => false,
+        ]);
+
+        foreach ($expectedProperties as $property) {
+            $this->assertMatchesRegularExpression(
+                '/@property\s+' . preg_quote($property, '/') . '\s*\{/',
+                $css,
+                "`{$class}` should register `@property {$property}`",
+            );
+        }
+    }
+
+    public static function composedVariableGroups(): array
+    {
+        $translate = ['--tw-translate-x', '--tw-translate-y', '--tw-translate-z'];
+        $scale = ['--tw-scale-x', '--tw-scale-y', '--tw-scale-z'];
+        $transform = ['--tw-rotate-x', '--tw-rotate-y', '--tw-rotate-z', '--tw-skew-x', '--tw-skew-y'];
+        $filter = [
+            '--tw-blur', '--tw-brightness', '--tw-contrast', '--tw-grayscale', '--tw-hue-rotate',
+            '--tw-invert', '--tw-opacity', '--tw-saturate', '--tw-sepia', '--tw-drop-shadow',
+        ];
+        $backdropFilter = [
+            '--tw-backdrop-blur', '--tw-backdrop-brightness', '--tw-backdrop-contrast',
+            '--tw-backdrop-grayscale', '--tw-backdrop-hue-rotate', '--tw-backdrop-invert',
+            '--tw-backdrop-opacity', '--tw-backdrop-saturate', '--tw-backdrop-sepia',
+        ];
+        $numeric = [
+            '--tw-ordinal', '--tw-slashed-zero', '--tw-numeric-figure',
+            '--tw-numeric-spacing', '--tw-numeric-fraction',
+        ];
+        $contain = ['--tw-contain-size', '--tw-contain-layout', '--tw-contain-paint', '--tw-contain-style'];
+        $touchAction = ['--tw-pan-x', '--tw-pan-y', '--tw-pinch-zoom'];
+        $borderSpacing = ['--tw-border-spacing-x', '--tw-border-spacing-y'];
+
+        return [
+            'translate-x-7' => ['translate-x-7', $translate],
+            'translate-4' => ['translate-4', $translate],
+            'translate-y-full' => ['translate-y-full', $translate],
+            'translate-3d' => ['translate-3d', $translate],
+            'scale-50' => ['scale-50', $scale],
+            'scale-x-50' => ['scale-x-50', $scale],
+            'scale-3d' => ['scale-3d', $scale],
+            'rotate-x-45' => ['rotate-x-45', $transform],
+            'skew-x-6' => ['skew-x-6', $transform],
+            'transform' => ['transform', $transform],
+            'blur-sm' => ['blur-sm', $filter],
+            'grayscale' => ['grayscale', $filter],
+            'filter' => ['filter', $filter],
+            'backdrop-blur-sm' => ['backdrop-blur-sm', $backdropFilter],
+            'backdrop-filter' => ['backdrop-filter', $backdropFilter],
+            'duration-300' => ['duration-300', ['--tw-duration']],
+            'ease-out' => ['ease-out', ['--tw-ease']],
+            'leading-6' => ['leading-6', ['--tw-leading']],
+            'tracking-wide' => ['tracking-wide', ['--tw-tracking']],
+            'tabular-nums' => ['tabular-nums', $numeric],
+            'contain-layout' => ['contain-layout', $contain],
+            'touch-pan-x' => ['touch-pan-x', $touchAction],
+            'snap-x' => ['snap-x', ['--tw-scroll-snap-strictness']],
+            'border-spacing-2' => ['border-spacing-2', $borderSpacing],
+        ];
+    }
+
+    /**
+     * The reported symptom: only `--tw-translate-x` changes between the three
+     * states of a toggle, so `translate` has to stay valid with the other axes unset.
+     */
+    public function test_translate_x_composes_a_usable_translate_declaration(): void
+    {
+        $css = Tailwind::generate([
+            'content' => '<div class="translate-x-0 translate-x-7 translate-x-14"></div>',
+            'css' => '@import "tailwindcss";',
+            'minify' => false,
+        ]);
+
+        foreach (['0', '7', '14'] as $step) {
+            $this->assertMatchesRegularExpression(
+                '/\.translate-x-' . $step . '\s*\{[^}]*translate:\s*var\(--tw-translate-x\)\s*var\(--tw-translate-y\)/',
+                $css,
+            );
+        }
+
+        $this->assertMatchesRegularExpression(
+            '/@property\s+--tw-translate-y\s*\{[^}]*initial-value:\s*0/s',
+            $css,
+        );
+    }
 }

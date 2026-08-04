@@ -507,11 +507,14 @@ function registerTypographyUtilities(UtilityBuilder $builder): void
     ]);
 
     // Line Height (leading)
+    $leadingProperty = fn () => atRoot([property('--tw-leading')]);
+
     $builder->functionalUtility('leading', [
         'themeKeys' => ['--leading', '--spacing'],
         'defaultValue' => null,
-        'handle' => function ($value) {
+        'handle' => function ($value) use ($leadingProperty) {
             return [
+                $leadingProperty(),
                 decl('--tw-leading', $value),
                 decl('line-height', $value),
             ];
@@ -528,33 +531,36 @@ function registerTypographyUtilities(UtilityBuilder $builder): void
             return "calc({$multiplier} * {$value['value']})";
         },
         'staticValues' => [
-            'none' => [decl('--tw-leading', '1'), decl('line-height', '1')],
-            'tight' => [decl('--tw-leading', '1.25'), decl('line-height', '1.25')],
-            'snug' => [decl('--tw-leading', '1.375'), decl('line-height', '1.375')],
-            'normal' => [decl('--tw-leading', '1.5'), decl('line-height', '1.5')],
-            'relaxed' => [decl('--tw-leading', '1.625'), decl('line-height', '1.625')],
-            'loose' => [decl('--tw-leading', '2'), decl('line-height', '2')],
+            'none' => [$leadingProperty(), decl('--tw-leading', '1'), decl('line-height', '1')],
+            'tight' => [$leadingProperty(), decl('--tw-leading', '1.25'), decl('line-height', '1.25')],
+            'snug' => [$leadingProperty(), decl('--tw-leading', '1.375'), decl('line-height', '1.375')],
+            'normal' => [$leadingProperty(), decl('--tw-leading', '1.5'), decl('line-height', '1.5')],
+            'relaxed' => [$leadingProperty(), decl('--tw-leading', '1.625'), decl('line-height', '1.625')],
+            'loose' => [$leadingProperty(), decl('--tw-leading', '2'), decl('line-height', '2')],
         ],
     ]);
 
     // Letter Spacing (tracking)
+    $trackingProperty = fn () => atRoot([property('--tw-tracking')]);
+
     $builder->functionalUtility('tracking', [
         'themeKeys' => ['--tracking', '--letter-spacing'],
         'supportsNegative' => true,
         'defaultValue' => null,
-        'handle' => function ($value) {
+        'handle' => function ($value) use ($trackingProperty) {
             return [
+                $trackingProperty(),
                 decl('--tw-tracking', $value),
                 decl('letter-spacing', $value),
             ];
         },
         'staticValues' => [
-            'tighter' => [decl('--tw-tracking', '-0.05em'), decl('letter-spacing', '-0.05em')],
-            'tight' => [decl('--tw-tracking', '-0.025em'), decl('letter-spacing', '-0.025em')],
-            'normal' => [decl('--tw-tracking', '0em'), decl('letter-spacing', '0em')],
-            'wide' => [decl('--tw-tracking', '0.025em'), decl('letter-spacing', '0.025em')],
-            'wider' => [decl('--tw-tracking', '0.05em'), decl('letter-spacing', '0.05em')],
-            'widest' => [decl('--tw-tracking', '0.1em'), decl('letter-spacing', '0.1em')],
+            'tighter' => [$trackingProperty(), decl('--tw-tracking', '-0.05em'), decl('letter-spacing', '-0.05em')],
+            'tight' => [$trackingProperty(), decl('--tw-tracking', '-0.025em'), decl('letter-spacing', '-0.025em')],
+            'normal' => [$trackingProperty(), decl('--tw-tracking', '0em'), decl('letter-spacing', '0em')],
+            'wide' => [$trackingProperty(), decl('--tw-tracking', '0.025em'), decl('letter-spacing', '0.025em')],
+            'wider' => [$trackingProperty(), decl('--tw-tracking', '0.05em'), decl('letter-spacing', '0.05em')],
+            'widest' => [$trackingProperty(), decl('--tw-tracking', '0.1em'), decl('letter-spacing', '0.1em')],
         ],
     ]);
 
@@ -580,6 +586,14 @@ function registerTypographyUtilities(UtilityBuilder $builder): void
     // Uses CSS variables to compose multiple numeric features
     $numericVar = 'var(--tw-ordinal, ) var(--tw-slashed-zero, ) var(--tw-numeric-figure, ) var(--tw-numeric-spacing, ) var(--tw-numeric-fraction, )';
 
+    $numericProperties = fn () => atRoot([
+        property('--tw-ordinal'),
+        property('--tw-slashed-zero'),
+        property('--tw-numeric-figure'),
+        property('--tw-numeric-spacing'),
+        property('--tw-numeric-fraction'),
+    ]);
+
     $builder->staticUtility('normal-nums', [
         ['--tw-ordinal', 'initial'],
         ['--tw-slashed-zero', 'initial'],
@@ -589,34 +603,42 @@ function registerTypographyUtilities(UtilityBuilder $builder): void
         ['font-variant-numeric', 'normal'],
     ]);
     $builder->staticUtility('ordinal', [
+        fn () => $numericProperties(),
         ['--tw-ordinal', 'ordinal'],
         ['font-variant-numeric', $numericVar],
     ]);
     $builder->staticUtility('slashed-zero', [
+        fn () => $numericProperties(),
         ['--tw-slashed-zero', 'slashed-zero'],
         ['font-variant-numeric', $numericVar],
     ]);
     $builder->staticUtility('lining-nums', [
+        fn () => $numericProperties(),
         ['--tw-numeric-figure', 'lining-nums'],
         ['font-variant-numeric', $numericVar],
     ]);
     $builder->staticUtility('oldstyle-nums', [
+        fn () => $numericProperties(),
         ['--tw-numeric-figure', 'oldstyle-nums'],
         ['font-variant-numeric', $numericVar],
     ]);
     $builder->staticUtility('proportional-nums', [
+        fn () => $numericProperties(),
         ['--tw-numeric-spacing', 'proportional-nums'],
         ['font-variant-numeric', $numericVar],
     ]);
     $builder->staticUtility('tabular-nums', [
+        fn () => $numericProperties(),
         ['--tw-numeric-spacing', 'tabular-nums'],
         ['font-variant-numeric', $numericVar],
     ]);
     $builder->staticUtility('diagonal-fractions', [
+        fn () => $numericProperties(),
         ['--tw-numeric-fraction', 'diagonal-fractions'],
         ['font-variant-numeric', $numericVar],
     ]);
     $builder->staticUtility('stacked-fractions', [
+        fn () => $numericProperties(),
         ['--tw-numeric-fraction', 'stacked-fractions'],
         ['font-variant-numeric', $numericVar],
     ]);

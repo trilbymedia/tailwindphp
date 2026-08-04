@@ -71,8 +71,16 @@ function registerInteractivityUtilities(UtilityBuilder $builder): void
 
     $touchActionValue = 'var(--tw-pan-x, ) var(--tw-pan-y, ) var(--tw-pinch-zoom, )';
 
+    // @property rules registering the touch-action variables
+    $touchActionProperties = fn () => atRoot([
+        property('--tw-pan-x'),
+        property('--tw-pan-y'),
+        property('--tw-pinch-zoom'),
+    ]);
+
     foreach (['x', 'left', 'right'] as $value) {
         $builder->staticUtility("touch-pan-{$value}", [
+            fn () => $touchActionProperties(),
             ['--tw-pan-x', "pan-{$value}"],
             ['touch-action', $touchActionValue],
         ]);
@@ -80,12 +88,14 @@ function registerInteractivityUtilities(UtilityBuilder $builder): void
 
     foreach (['y', 'up', 'down'] as $value) {
         $builder->staticUtility("touch-pan-{$value}", [
+            fn () => $touchActionProperties(),
             ['--tw-pan-y', "pan-{$value}"],
             ['touch-action', $touchActionValue],
         ]);
     }
 
     $builder->staticUtility('touch-pinch-zoom', [
+        fn () => $touchActionProperties(),
         ['--tw-pinch-zoom', 'pinch-zoom'],
         ['touch-action', $touchActionValue],
     ]);
@@ -116,14 +126,26 @@ function registerInteractivityUtilities(UtilityBuilder $builder): void
 
     $builder->staticUtility('snap-none', [['scroll-snap-type', 'none']]);
 
+    // @property rule registering the scroll snap strictness variable
+    $snapStrictnessProperty = fn () => atRoot([
+        property('--tw-scroll-snap-strictness', 'proximity', '*'),
+    ]);
+
     foreach (['x', 'y', 'both'] as $value) {
         $builder->staticUtility("snap-{$value}", [
+            fn () => $snapStrictnessProperty(),
             ['scroll-snap-type', "{$value} var(--tw-scroll-snap-strictness)"],
         ]);
     }
 
-    $builder->staticUtility('snap-mandatory', [['--tw-scroll-snap-strictness', 'mandatory']]);
-    $builder->staticUtility('snap-proximity', [['--tw-scroll-snap-strictness', 'proximity']]);
+    $builder->staticUtility('snap-mandatory', [
+        fn () => $snapStrictnessProperty(),
+        ['--tw-scroll-snap-strictness', 'mandatory'],
+    ]);
+    $builder->staticUtility('snap-proximity', [
+        fn () => $snapStrictnessProperty(),
+        ['--tw-scroll-snap-strictness', 'proximity'],
+    ]);
 
     // ==================================================
     // Scroll Snap Align

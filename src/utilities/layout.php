@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace TailwindPHP\Utilities;
 
+use function TailwindPHP\Ast\atRoot;
 use function TailwindPHP\Ast\atRule;
 use function TailwindPHP\Ast\decl;
 use function TailwindPHP\Utils\compareBreakpoints;
@@ -240,11 +241,18 @@ function registerLayoutUtilities(UtilityBuilder $builder): void
     $builder->staticUtility('contain-none', [['contain', 'none']]);
     $builder->staticUtility('contain-content', [['contain', 'content']]);
     $builder->staticUtility('contain-strict', [['contain', 'strict']]);
-    $builder->staticUtility('contain-size', [['--tw-contain-size', 'size'], ['contain', $containVar]]);
-    $builder->staticUtility('contain-inline-size', [['--tw-contain-size', 'inline-size'], ['contain', $containVar]]);
-    $builder->staticUtility('contain-layout', [['--tw-contain-layout', 'layout'], ['contain', $containVar]]);
-    $builder->staticUtility('contain-paint', [['--tw-contain-paint', 'paint'], ['contain', $containVar]]);
-    $builder->staticUtility('contain-style', [['--tw-contain-style', 'style'], ['contain', $containVar]]);
+    // @property rules registering the contain variables
+    $containProperties = fn () => atRoot([
+        property('--tw-contain-size'),
+        property('--tw-contain-layout'),
+        property('--tw-contain-paint'),
+        property('--tw-contain-style'),
+    ]);
+    $builder->staticUtility('contain-size', [fn () => $containProperties(), ['--tw-contain-size', 'size'], ['contain', $containVar]]);
+    $builder->staticUtility('contain-inline-size', [fn () => $containProperties(), ['--tw-contain-size', 'inline-size'], ['contain', $containVar]]);
+    $builder->staticUtility('contain-layout', [fn () => $containProperties(), ['--tw-contain-layout', 'layout'], ['contain', $containVar]]);
+    $builder->staticUtility('contain-paint', [fn () => $containProperties(), ['--tw-contain-paint', 'paint'], ['contain', $containVar]]);
+    $builder->staticUtility('contain-style', [fn () => $containProperties(), ['--tw-contain-style', 'style'], ['contain', $containVar]]);
 
     $builder->functionalUtility('contain', [
         'themeKeys' => [],
