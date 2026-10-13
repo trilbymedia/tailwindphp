@@ -2763,7 +2763,7 @@ function generate(string|array $input, string $css = '@import "tailwindcss";'): 
         // never sees a half-written file. Write to a unique temp file in the
         // same directory and rename over the target (atomic on the same fs).
         $result = generateWithoutCache($content, $css, $compileOptions, $minify);
-        $tmpPath = $cachePath . '.' . getmypid() . '.' . uniqid('', true) . '.tmp';
+        $tmpPath = $cachePath . '.' . uniqid('', true) . '.tmp';
         if (file_put_contents($tmpPath, $result, LOCK_EX) !== false && !@rename($tmpPath, $cachePath)) {
             @unlink($tmpPath);
         }

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.4] - 2026-10-13
+
+### Fixed
+
+- **Works on hosts that disable `getmypid()`.** The compile cache named its temporary file after the process id, which is a fatal error on PHP-FPM pools that disable it (a common hardening). The name is now the `uniqid()` part alone.
+
 ## [1.6.3] - 2026-08-04
 
 ### Fixed
